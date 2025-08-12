@@ -60,7 +60,7 @@ docking:
       remove_waters: true
 
 visualization:
-  output_file: "molecular_docking_mgltools.html"
+  output_file: "docking/molecular_docking_mgltools.html"
   title: "Molecular Analysis with MGLTools Docking"
   property_plots:
     primary_plot:
@@ -70,5 +70,5 @@ visualization:
 
 export:
   export_data: true
-  export_file: "analysis_with_mgltools_docking.csv"
+  export_file: "docking/analysis_with_mgltools_docking.csv"
   export_docking: true

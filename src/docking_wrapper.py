@@ -241,54 +241,53 @@ class VinaDockingWrapper:
                     self.logger.warning(f"MMFF optimization failed for ligand {idx}: {e}")
                     # Continue anyway, the embedded coordinates might still work
                 
-                # Step 2: Write to PDB file (intermediate)
-                ligand_pdb = Path(self.temp_dir) / f"ligand_{idx:04d}.pdb"
+                # Step 2: Write to PDB file using working directory approach
+                compound_name = row.get('title', f"ligand_{idx:04d}")
+                # Sanitize compound name for filename
+                safe_name = "".join(c for c in compound_name if c.isalnum() or c in ('-', '_'))[:20]
+                if not safe_name:
+                    safe_name = f"ligand_{idx:04d}"
                 
-                # Check if 3D coordinates were successfully generated
-                if mol_h.GetNumConformers() == 0:
-                    self.logger.warning(f"Failed to generate 3D coordinates for ligand {idx}")
+                ligand_pdb = Path(self.temp_dir) / f"{safe_name}.pdb"
+                ligand_pdbqt = Path(self.temp_dir) / f"{safe_name}.pdbqt"
+                
+                # Write PDB file
+                pdb_block = Chem.MolToPDBBlock(mol_h)
+                if not pdb_block or pdb_block.strip() == "":
+                    self.logger.warning(f"Empty PDB block generated for ligand {idx}")
+                    continue
+                    
+                with open(ligand_pdb, 'w') as f:
+                    f.write(pdb_block)
+                
+                if not ligand_pdb.exists() or ligand_pdb.stat().st_size == 0:
+                    self.logger.warning(f"Failed to create PDB file for ligand {idx}")
                     continue
                 
-                # Use Chem.MolToPDBBlock to write PDB file manually
+                # Step 3: Convert PDB to PDBQT using MGLTools (run from temp directory)
+                original_dir = os.getcwd()
                 try:
-                    pdb_block = Chem.MolToPDBBlock(mol_h)
-                    if not pdb_block or pdb_block.strip() == "":
-                        self.logger.warning(f"Empty PDB block generated for ligand {idx}")
+                    os.chdir(self.temp_dir)
+                    
+                    cmd = [
+                        self.mgl_python,
+                        prepare_ligand_script,
+                        '-l', f"{safe_name}.pdb",  # Use relative path
+                        '-o', f"{safe_name}.pdbqt",
+                        '-A', 'hydrogens'
+                    ]
+                    
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                    
+                    if result.returncode == 0 and ligand_pdbqt.exists():
+                        ligand_pdbqt_files.append(str(ligand_pdbqt))
+                        self.logger.info(f"Successfully prepared ligand {idx}: {ligand_pdbqt}")
+                    else:
+                        self.logger.warning(f"Failed to prepare ligand {idx} with MGLTools: {result.stderr}")
                         continue
                         
-                    with open(ligand_pdb, 'w') as f:
-                        f.write(pdb_block)
-                    
-                    # Verify file was created and has content
-                    if not ligand_pdb.exists() or ligand_pdb.stat().st_size == 0:
-                        self.logger.warning(f"Failed to create valid PDB file for ligand {idx}")
-                        continue
-                    
-                    self.logger.debug(f"Created PDB file: {ligand_pdb} ({ligand_pdb.stat().st_size} bytes)")
-                    
-                except Exception as e:
-                    self.logger.warning(f"Error creating PDB file for ligand {idx}: {e}")
-                    continue
-                
-                # Step 3: Convert PDB to PDBQT using MGLTools
-                ligand_pdbqt = Path(self.temp_dir) / f"ligand_{idx:04d}.pdbqt"
-                
-                cmd = [
-                    self.mgl_python,
-                    prepare_ligand_script,
-                    '-l', str(ligand_pdb),
-                    '-o', str(ligand_pdbqt),
-                    '-A', 'hydrogens',  # Add hydrogens
-                    '-U', 'waters'      # Remove waters if any
-                ]
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-                
-                if result.returncode == 0 and ligand_pdbqt.exists():
-                    ligand_pdbqt_files.append(str(ligand_pdbqt))
-                else:
-                    self.logger.warning(f"Failed to prepare ligand {idx} with MGLTools: {result.stderr}")
-                    continue
+                finally:
+                    os.chdir(original_dir)
                 
             except Exception as e:
                 self.logger.warning(f"Failed to prepare ligand {idx}: {e}")
@@ -336,12 +335,15 @@ class VinaDockingWrapper:
                 self.logger.info(f"  Docking ligand {i+1}/{len(ligand_files)}")
             
             try:
-                # Extract ligand index from filename
-                ligand_idx = int(Path(ligand_file).stem.split('_')[1])
+                # Use enumeration index as ligand identifier
+                ligand_idx = i
+                
+                # Get compound name from filename for better organization
+                compound_name = Path(ligand_file).stem
                 
                 # Output file for docking result
-                output_file = output_dir / f"result_{ligand_idx:04d}.pdbqt"
-                log_file = output_dir / f"log_{ligand_idx:04d}.txt"
+                output_file = output_dir / f"result_{ligand_idx:04d}_{compound_name}.pdbqt"
+                log_file = output_dir / f"log_{ligand_idx:04d}_{compound_name}.txt"
                 
                 # Build Vina command with binding site parameters
                 vina_executable = self._get_vina_executable()
@@ -432,9 +434,12 @@ class VinaDockingWrapper:
             # Look for the results table
             for i, line in enumerate(lines):
                 if 'mode' in line and 'affinity' in line:
-                    # Next line should contain the best result
-                    if i + 1 < len(lines):
-                        result_line = lines[i + 1].strip()
+                    # Skip the units line and get the first data line
+                    if i + 2 < len(lines):
+                        # Skip the "|  (kcal/mol) | rmsd l.b.| rmsd u.b." line
+                        # Skip the "-----+------------+----------+----------" line  
+                        # Get the actual first result line
+                        result_line = lines[i + 3].strip()
                         parts = result_line.split()
                         if len(parts) >= 2:
                             try:
