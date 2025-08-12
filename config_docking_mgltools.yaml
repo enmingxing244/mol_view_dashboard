@@ -1,0 +1,74 @@
+# Enhanced Docking Configuration with MGLTools Integration
+input:
+  csv_file: "examples/sample_compounds.csv"
+  smiles_column: "SMILES"
+  name_column: "Name"
+  property_columns:
+    - "Activity_uM"
+    - "Binding_Score"
+
+analysis:
+  calculate_descriptors: true
+  chemical_space:
+    pca:
+      enabled: true
+      n_components: 2
+    tsne:
+      enabled: true
+      n_components: 2
+      perplexity: 15
+
+# 🧬 MGLTools-based Docking Configuration
+docking:
+  enabled: true
+  
+  # Input protein PDB file (will be cleaned and prepared by MGLTools)
+  protein_pdb: "/Users/enmingxing/Projects/mol_view_dashboard/examples/4csv.pdb"
+  
+  # AutoDock Vina executable path (if not in system PATH)
+  vina_executable: "/Users/enmingxing/Projects/mol_view_dashboard/packages/autodock_vina_1_1_2_mac_catalina_64bit/bin/vina"
+  
+  # Binding site configuration (you specify these coordinates)
+  binding_site:
+    # Center coordinates (x, y, z) of the binding pocket
+    center: [-21.23, 8.03, -0.93]
+    
+    # Size of the search box (x, y, z) in Angstroms
+    size: [20.0, 20.0, 20.0]
+  
+  # Vina docking parameters
+  parameters:
+    exhaustiveness: 8    # Search thoroughness (higher = more thorough)
+    num_modes: 9        # Number of binding modes to generate
+    energy_range: 3     # Energy range for modes (kcal/mol)
+    
+  # Output directory for docking results
+  output_dir: "docking_results"
+  
+  # MGLTools configuration 
+  mgltools:
+    # Receptor preparation options
+    receptor_prep:
+      add_hydrogens: true
+      remove_waters: true
+      remove_nonstd_residues: true
+      remove_ligands: true          # ← Remove native ligands/cofactors
+    
+    # Ligand preparation options  
+    ligand_prep:
+      add_hydrogens: true
+      remove_waters: true
+
+visualization:
+  output_file: "molecular_docking_mgltools.html"
+  title: "Molecular Analysis with MGLTools Docking"
+  property_plots:
+    primary_plot:
+      x_axis: "MW"
+      y_axis: "LogP"
+      color_by: "binding_energy"  # Color by docking results
+
+export:
+  export_data: true
+  export_file: "analysis_with_mgltools_docking.csv"
+  export_docking: true

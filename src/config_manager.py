@@ -179,15 +179,28 @@ class ConfigManager:
         if docking_config.get('enabled', False):
             protein_pdb = docking_config.get('protein_pdb')
             vina_config = docking_config.get('vina_config')
+            binding_site = docking_config.get('binding_site')
             
             if not protein_pdb:
                 raise ConfigurationError("Docking enabled but no protein PDB file specified")
-            if not vina_config:
-                raise ConfigurationError("Docking enabled but no Vina configuration file specified")
             
+            # Check that either vina_config OR binding_site is specified
+            if not vina_config and not binding_site:
+                raise ConfigurationError("Docking enabled but neither 'vina_config' file nor 'binding_site' parameters specified")
+            
+            # Validate binding site parameters if using inline configuration
+            if binding_site:
+                center = binding_site.get('center')
+                size = binding_site.get('size')
+                if not center or len(center) != 3:
+                    raise ConfigurationError("Binding site 'center' must be a list of 3 coordinates [x, y, z]")
+                if not size or len(size) != 3:
+                    raise ConfigurationError("Binding site 'size' must be a list of 3 dimensions [x, y, z]")
+            
+            # Check file existence
             if not Path(protein_pdb).exists():
                 self.logger.warning(f"Protein PDB file not found: {protein_pdb}")
-            if not Path(vina_config).exists():
+            if vina_config and not Path(vina_config).exists():
                 self.logger.warning(f"Vina configuration file not found: {vina_config}")
         
         self.logger.info("Configuration validation completed")

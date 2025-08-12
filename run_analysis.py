@@ -253,24 +253,32 @@ def main():
         # Initialize docking if enabled
         docking_data = None
         if config.is_docking_enabled():
-            logger.info("Initializing molecular docking...")
+            logger.info("Initializing molecular docking with MGLTools...")
             try:
                 docking_wrapper = VinaDockingWrapper(config)
                 
-                # Prepare ligands
+                # Step 1: Prepare receptor using MGLTools
+                logger.info("Preparing receptor with MGLTools...")
+                receptor_file = docking_wrapper.prepare_receptor()
+                
+                # Step 2: Prepare ligands using MGLTools
+                logger.info("Preparing ligands with MGLTools...")
                 ligand_files = docking_wrapper.prepare_ligands(df)
                 
-                if ligand_files:
-                    # Run docking
-                    docking_results = docking_wrapper.run_vina_docking(ligand_files)
+                if ligand_files and receptor_file:
+                    # Step 3: Run docking with prepared files
+                    logger.info(f"Running Vina docking with {len(ligand_files)} ligands...")
+                    docking_results = docking_wrapper.run_vina_docking(ligand_files, receptor_file)
                     
-                    # Integrate results
+                    # Step 4: Integrate results
                     df = docking_wrapper.integrate_docking_results(df)
                     
-                    # Prepare visualization data
+                    # Step 5: Prepare visualization data
                     docking_data = docking_wrapper.prepare_docking_visualization_data(df)
                     
-                    logger.info(f"Docking completed for {len(docking_data)} compounds")
+                    logger.info(f"MGLTools docking completed for {len(docking_data)} compounds")
+                else:
+                    logger.warning("Failed to prepare receptor or ligands for docking")
                 
             except DockingError as e:
                 logger.warning(f"Docking failed: {e}")

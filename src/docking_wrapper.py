@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Molecular Docking Wrapper
-Handles AutoDock Vina integration for molecular docking analysis
-- Prepares ligands from SMILES
+Handles AutoDock Vina integration with MGLTools preparation
+- Prepares receptors using MGLTools (clean water/ions, add charges)
+- Prepares ligands from SMILES using MGLTools prepare_ligand4.py
 - Runs Vina docking calculations
 - Processes docking results
 - Integrates results with visualization data
@@ -33,7 +34,7 @@ class DockingError(Exception):
 
 
 class VinaDockingWrapper:
-    """Wrapper for AutoDock Vina molecular docking"""
+    """Wrapper for AutoDock Vina molecular docking with MGLTools preparation"""
     
     def __init__(self, config_manager):
         """
@@ -46,6 +47,11 @@ class VinaDockingWrapper:
         self.logger = logging.getLogger(__name__)
         self.docking_results = []
         self.temp_dir = None
+        
+        # MGLTools paths
+        self.mgltools_path = "/Users/enmingxing/Projects/mol_view_dashboard/packages/mgltools_1.5.7_MacOS-X/installed"
+        self.mgl_python = f"{self.mgltools_path}/bin/python"
+        self.utilities_path = f"{self.mgltools_path}/MGLToolsPckgs/AutoDockTools/Utilities24"
         
         # Check if docking is enabled
         if not self.config.is_docking_enabled():
@@ -64,17 +70,34 @@ class VinaDockingWrapper:
         """
         # Check for required files
         protein_pdb = self.config.get('docking.protein_pdb')
-        vina_config = self.config.get('docking.vina_config')
         
         if not protein_pdb or not Path(protein_pdb).exists():
             raise DockingError(f"Protein PDB file not found: {protein_pdb}")
         
-        if not vina_config or not Path(vina_config).exists():
-            raise DockingError(f"Vina configuration file not found: {vina_config}")
+        # Check for MGLTools installation
+        if not Path(self.mgl_python).exists():
+            raise DockingError(f"MGLTools Python not found: {self.mgl_python}")
+        
+        if not Path(self.utilities_path).exists():
+            raise DockingError(f"MGLTools utilities not found: {self.utilities_path}")
         
         # Check for Vina executable
         if not self._check_vina_executable():
-            raise DockingError("AutoDock Vina executable not found in PATH")
+            vina_path = self.config.get('docking.vina_executable')
+            if vina_path:
+                raise DockingError(f"AutoDock Vina executable not found at: {vina_path}")
+            else:
+                raise DockingError("AutoDock Vina executable not found. Please specify vina_executable in configuration.")
+        
+        # Check for required docking parameters
+        center = self.config.get('docking.binding_site.center')
+        size = self.config.get('docking.binding_site.size')
+        
+        if not center or len(center) != 3:
+            raise DockingError("Binding site center (x, y, z) must be specified in configuration")
+        
+        if not size or len(size) != 3:
+            raise DockingError("Binding site size (x, y, z) must be specified in configuration")
         
         self.logger.info("Docking setup validation completed")
     
@@ -85,8 +108,11 @@ class VinaDockingWrapper:
         Returns:
             True if Vina executable is found, False otherwise
         """
+        # Get custom vina executable path from config
+        vina_executable = self.config.get('docking.vina_executable', 'vina')
+        
         try:
-            result = subprocess.run(['vina', '--help'], 
+            result = subprocess.run([vina_executable, '--help'], 
                                  capture_output=True, 
                                  text=True, 
                                  timeout=10)
@@ -94,27 +120,98 @@ class VinaDockingWrapper:
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
     
+    def _get_vina_executable(self) -> str:
+        """
+        Get the Vina executable path
+        
+        Returns:
+            Path to Vina executable
+        """
+        return self.config.get('docking.vina_executable', 'vina')
+    
+    def prepare_receptor(self) -> str:
+        """
+        Prepare receptor using MGLTools - clean water/ions and convert to PDBQT
+        
+        Returns:
+            Path to prepared receptor PDBQT file
+        """
+        if not self.config.is_docking_enabled():
+            return ""
+        
+        protein_pdb = self.config.get('docking.protein_pdb')
+        self.logger.info(f"Preparing receptor from: {protein_pdb}")
+        
+        # Create temp directory if not exists
+        if not self.temp_dir:
+            self.temp_dir = tempfile.mkdtemp(prefix="mol_docking_")
+        
+        # Output PDBQT file path
+        receptor_pdbqt = Path(self.temp_dir) / "receptor.pdbqt"
+        
+        # MGLTools prepare_receptor4.py command
+        prepare_receptor_script = f"{self.utilities_path}/prepare_receptor4.py"
+        
+        # Get receptor preparation options from config
+        receptor_prep = self.config.get('docking.mgltools.receptor_prep', {})
+        remove_ligands = receptor_prep.get('remove_ligands', True)
+        
+        cmd = [
+            self.mgl_python,
+            prepare_receptor_script,
+            '-r', str(protein_pdb),
+            '-o', str(receptor_pdbqt),
+            '-A', 'hydrogens',  # Add hydrogens
+            '-U', 'waters',     # Remove waters
+            '-U', 'nonstdres'   # Remove non-standard residues
+        ]
+        
+        # Add ligand removal option if enabled
+        if remove_ligands:
+            cmd.extend(['-U', 'lps'])  # Remove ligands and cofactors
+            self.logger.info("Receptor preparation will remove: waters, non-standard residues, and native ligands/cofactors")
+        else:
+            self.logger.info("Receptor preparation will remove: waters and non-standard residues (keeping native ligands)")
+        
+        self.logger.info(f"Running: {' '.join(cmd)}")
+        
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0 and receptor_pdbqt.exists():
+                self.logger.info(f"Receptor prepared successfully: {receptor_pdbqt}")
+                return str(receptor_pdbqt)
+            else:
+                raise DockingError(f"Receptor preparation failed: {result.stderr}")
+                
+        except subprocess.TimeoutExpired:
+            raise DockingError("Receptor preparation timed out")
+        except Exception as e:
+            raise DockingError(f"Error preparing receptor: {e}")
+    
     def prepare_ligands(self, df: pd.DataFrame) -> List[str]:
         """
-        Prepare ligand files from SMILES strings
+        Prepare ligand files from SMILES using MGLTools
         
         Args:
             df: DataFrame containing SMILES and molecule data
             
         Returns:
-            List of prepared ligand file paths
+            List of prepared ligand PDBQT file paths
         """
         if not self.config.is_docking_enabled():
             return []
         
-        self.logger.info(f"Preparing ligands for {len(df)} compounds...")
+        self.logger.info(f"Preparing ligands for {len(df)} compounds using MGLTools...")
         
         # Create temporary directory for ligand files
-        self.temp_dir = tempfile.mkdtemp(prefix="mol_docking_")
+        if not self.temp_dir:
+            self.temp_dir = tempfile.mkdtemp(prefix="mol_docking_")
         self.logger.info(f"Using temporary directory: {self.temp_dir}")
         
-        ligand_files = []
+        ligand_pdbqt_files = []
         smiles_col = self.config.get('input.smiles_column', 'SMILES')
+        prepare_ligand_script = f"{self.utilities_path}/prepare_ligand4.py"
         
         for idx, row in df.iterrows():
             if idx % 10 == 0:
@@ -125,32 +222,88 @@ class VinaDockingWrapper:
                 if mol is None:
                     continue
                 
-                # Add hydrogens and generate 3D coordinates
+                # Step 1: Generate 3D structure using RDKit
                 mol_h = Chem.AddHs(mol)
-                AllChem.EmbedMolecule(mol_h, randomSeed=42)
-                AllChem.MMFFOptimizeMolecule(mol_h)
                 
-                # Write to SDF file
-                ligand_file = Path(self.temp_dir) / f"ligand_{idx:04d}.sdf"
-                writer = Chem.SDWriter(str(ligand_file))
-                writer.write(mol_h)
-                writer.close()
+                # Try to embed molecule with multiple attempts
+                embed_result = AllChem.EmbedMolecule(mol_h, randomSeed=42)
+                if embed_result == -1:
+                    # Try with different parameters
+                    embed_result = AllChem.EmbedMolecule(mol_h, randomSeed=42, useRandomCoords=True)
+                    if embed_result == -1:
+                        self.logger.warning(f"Failed to embed 3D coordinates for ligand {idx}")
+                        continue
                 
-                ligand_files.append(str(ligand_file))
+                # Optimize geometry
+                try:
+                    AllChem.MMFFOptimizeMolecule(mol_h)
+                except Exception as e:
+                    self.logger.warning(f"MMFF optimization failed for ligand {idx}: {e}")
+                    # Continue anyway, the embedded coordinates might still work
+                
+                # Step 2: Write to PDB file (intermediate)
+                ligand_pdb = Path(self.temp_dir) / f"ligand_{idx:04d}.pdb"
+                
+                # Check if 3D coordinates were successfully generated
+                if mol_h.GetNumConformers() == 0:
+                    self.logger.warning(f"Failed to generate 3D coordinates for ligand {idx}")
+                    continue
+                
+                # Use Chem.MolToPDBBlock to write PDB file manually
+                try:
+                    pdb_block = Chem.MolToPDBBlock(mol_h)
+                    if not pdb_block or pdb_block.strip() == "":
+                        self.logger.warning(f"Empty PDB block generated for ligand {idx}")
+                        continue
+                        
+                    with open(ligand_pdb, 'w') as f:
+                        f.write(pdb_block)
+                    
+                    # Verify file was created and has content
+                    if not ligand_pdb.exists() or ligand_pdb.stat().st_size == 0:
+                        self.logger.warning(f"Failed to create valid PDB file for ligand {idx}")
+                        continue
+                    
+                    self.logger.debug(f"Created PDB file: {ligand_pdb} ({ligand_pdb.stat().st_size} bytes)")
+                    
+                except Exception as e:
+                    self.logger.warning(f"Error creating PDB file for ligand {idx}: {e}")
+                    continue
+                
+                # Step 3: Convert PDB to PDBQT using MGLTools
+                ligand_pdbqt = Path(self.temp_dir) / f"ligand_{idx:04d}.pdbqt"
+                
+                cmd = [
+                    self.mgl_python,
+                    prepare_ligand_script,
+                    '-l', str(ligand_pdb),
+                    '-o', str(ligand_pdbqt),
+                    '-A', 'hydrogens',  # Add hydrogens
+                    '-U', 'waters'      # Remove waters if any
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                
+                if result.returncode == 0 and ligand_pdbqt.exists():
+                    ligand_pdbqt_files.append(str(ligand_pdbqt))
+                else:
+                    self.logger.warning(f"Failed to prepare ligand {idx} with MGLTools: {result.stderr}")
+                    continue
                 
             except Exception as e:
                 self.logger.warning(f"Failed to prepare ligand {idx}: {e}")
                 continue
         
-        self.logger.info(f"Successfully prepared {len(ligand_files)} ligand files")
-        return ligand_files
+        self.logger.info(f"Successfully prepared {len(ligand_pdbqt_files)} ligand PDBQT files")
+        return ligand_pdbqt_files
     
-    def run_vina_docking(self, ligand_files: List[str]) -> List[Dict[str, Any]]:
+    def run_vina_docking(self, ligand_files: List[str], receptor_file: str) -> List[Dict[str, Any]]:
         """
         Run AutoDock Vina docking for prepared ligands
         
         Args:
-            ligand_files: List of ligand file paths
+            ligand_files: List of ligand PDBQT file paths
+            receptor_file: Path to prepared receptor PDBQT file
             
         Returns:
             List of docking results dictionaries
@@ -161,8 +314,6 @@ class VinaDockingWrapper:
         self.logger.info(f"Running Vina docking for {len(ligand_files)} ligands...")
         
         # Get docking configuration
-        protein_pdb = self.config.get('docking.protein_pdb')
-        vina_config = self.config.get('docking.vina_config')
         output_dir = Path(self.config.get('docking.output_dir', 'docking_results'))
         
         # Create output directory
@@ -173,6 +324,10 @@ class VinaDockingWrapper:
         exhaustiveness = params.get('exhaustiveness', 8)
         num_modes = params.get('num_modes', 9)
         energy_range = params.get('energy_range', 3)
+        
+        # Binding site configuration
+        center = self.config.get('docking.binding_site.center')
+        size = self.config.get('docking.binding_site.size')
         
         docking_results = []
         
@@ -188,14 +343,20 @@ class VinaDockingWrapper:
                 output_file = output_dir / f"result_{ligand_idx:04d}.pdbqt"
                 log_file = output_dir / f"log_{ligand_idx:04d}.txt"
                 
-                # Build Vina command
+                # Build Vina command with binding site parameters
+                vina_executable = self._get_vina_executable()
                 vina_cmd = [
-                    'vina',
-                    '--config', str(vina_config),
-                    '--receptor', str(protein_pdb),
+                    vina_executable,
+                    '--receptor', str(receptor_file),
                     '--ligand', str(ligand_file),
                     '--out', str(output_file),
                     '--log', str(log_file),
+                    '--center_x', str(center[0]),
+                    '--center_y', str(center[1]),
+                    '--center_z', str(center[2]),
+                    '--size_x', str(size[0]),
+                    '--size_y', str(size[1]),
+                    '--size_z', str(size[2]),
                     '--exhaustiveness', str(exhaustiveness),
                     '--num_modes', str(num_modes),
                     '--energy_range', str(energy_range)
