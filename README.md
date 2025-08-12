@@ -1,70 +1,144 @@
-# Molecular Visualization Dashboard
+# Molecular Visualization and Analysis Tool
 
-An open-source repository for interactive visualization of small molecules with property annotations. This toolkit provides comprehensive molecular analysis capabilities including chemical space exploration, property visualization, and interactive dashboards.
+A comprehensive Python-based tool for molecular property analysis, chemical space visualization, and optional molecular docking. This enhanced toolkit creates interactive HTML dashboards with synchronized highlighting across multiple plot types including property visualizations, PCA, and t-SNE chemical space analysis.
 
 ## 🚀 Features
 
-### Core Capabilities
-- **SDF to CSV Conversion**: Convert SDF files to CSV format with canonicalized SMILES
-- **Property Visualization**: Create interactive scatter plots of molecular properties
-- **Chemical Space Analysis**: Explore molecular diversity using PCA and t-SNE
-- **Interactive Dashboards**: Generate HTML dashboards with synchronized highlighting
-- **Structure Display**: View 2D molecular structures on hover/click
-- **Multi-dataset Support**: Analyze and compare multiple datasets simultaneously
+### Core Analysis Capabilities
+- **Molecular Property Calculation**: Comprehensive descriptor calculation (MW, LogP, TPSA, QED, SA Score, etc.)
+- **Chemical Space Analysis**: PCA and t-SNE visualization of molecular fingerprints
+- **Interactive Property Plots**: User-configurable scatter plots with selectable X/Y axes and color coding
+- **Synchronized Highlighting**: Mouse interactions highlight compounds across all plots simultaneously
 
-### Visualization Types
-- **Property Correlation Plots**: MW vs LogP, TPSA vs QED, HBA vs HBD
-- **Chemical Space Mapping**: t-SNE and PCA molecular space visualization
-- **Custom Property Analysis**: Use your own molecular properties for visualization
-- **Multi-source Comparison**: Color-code and compare compounds from different sources
+### Advanced Features
+- **Molecular Docking**: Optional AutoDock Vina integration for protein-ligand docking
+- **Professional Styling**: Clean white backgrounds, color bars, and scientific visualization standards
+- **YAML Configuration**: Flexible configuration system for customizing all analysis parameters
+- **Export Capabilities**: Export processed data and analysis results
+
+### Visualization Features
+- **Interactive HTML Dashboard**: Modern web-based interface with tabs and controls
+- **Structure Display**: Molecular structure visualization on hover/click
+- **Docking Pose Viewer**: 3D visualization of docking poses (when docking enabled)
+- **Responsive Design**: Works on desktop and mobile devices
 
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.7+
-- RDKit (chemical informatics toolkit)
+- Python 3.8 or higher
+- RDKit (chemistry toolkit)
+- AutoDock Vina (optional, for docking)
 
-### Option 1: Using Conda (Recommended)
+### Install Dependencies
+
 ```bash
-# Create conda environment with RDKit
-conda create -n molview python=3.8
-conda activate molview
-conda install -c conda-forge rdkit
+# Using conda (recommended for RDKit)
+conda create -n mol_analysis python=3.9
+conda activate mol_analysis
+conda install -c conda-forge rdkit pandas numpy scikit-learn pyyaml
 
-# Install other dependencies
-pip install pandas numpy scikit-learn
-```
-
-### Option 2: Using pip
-```bash
-# Create virtual environment
-python -m venv molview
-source molview/bin/activate  # On Windows: molview\Scripts\activate
-
-# Install all dependencies
+# Or using pip
 pip install -r requirements.txt
 ```
 
-### Clone Repository
+### Install AutoDock Vina (Optional)
+For molecular docking functionality:
+
 ```bash
-git clone https://github.com/your-username/mol_view_dashboard.git
-cd mol_view_dashboard
+# On Ubuntu/Debian
+sudo apt-get install autodock-vina
+
+# On macOS with Homebrew
+brew install autodock-vina
+
+# Or download from: https://vina.scripps.edu/downloads/
 ```
 
 ## 📁 Repository Structure
 
 ```
 mol_view_dashboard/
-├── scripts/
+├── src/                              # Enhanced analysis modules
+│   ├── config_manager.py            # YAML configuration handling
+│   ├── molecular_data_processor.py  # Data loading and analysis
+│   ├── docking_wrapper.py           # AutoDock Vina integration
+│   └── dashboard_generator.py       # HTML dashboard creation
+├── scripts/                          # Legacy scripts (still functional)
 │   ├── sdf_to_csv_converter.py      # Convert SDF files to CSV
 │   ├── molecular_property_visualizer.py  # Single dataset analysis
 │   └── chemical_space_analyzer.py   # Multi-dataset comparison
+├── run_analysis.py                   # Main entry point (NEW)
+├── config_template.yaml             # Configuration template
 ├── requirements.txt                 # Python dependencies
-├── LICENSE                         # License file
-└── README.md                       # This file
+└── README.md                        # This file
 ```
 
 ## 🔧 Usage
+
+## Quick Start
+
+### Basic Usage (NEW Enhanced Interface)
+
+```bash
+# Analyze a CSV file with SMILES
+python run_analysis.py compounds.csv
+
+# Specify output file
+python run_analysis.py compounds.csv --output my_analysis.html
+
+# Include specific property columns
+python run_analysis.py compounds.csv --properties MW LogP TPSA QED
+```
+
+### Advanced Usage with Configuration
+
+```bash
+# Generate sample configuration file
+python run_analysis.py --generate-config
+
+# Use custom configuration
+python run_analysis.py compounds.csv --config my_config.yaml
+
+# Enable molecular docking
+python run_analysis.py compounds.csv --protein protein.pdb --vina-config vina.conf
+```
+
+## Configuration
+
+### YAML Configuration File
+The tool uses YAML configuration files for detailed customization. Generate a template:
+
+```bash
+python run_analysis.py --generate-config
+```
+
+### Example Configuration Sections
+
+#### Input Configuration
+```yaml
+input:
+  csv_file: "data/compounds.csv"
+  smiles_column: "SMILES"
+  name_column: "Name"
+  property_columns:
+    - "MW"
+    - "LogP"
+    - "TPSA"
+    - "IC50"
+```
+
+#### Docking Configuration
+```yaml
+docking:
+  enabled: true
+  protein_pdb: "data/protein.pdb"
+  vina_config: "data/vina.conf"
+  parameters:
+    exhaustiveness: 8
+    num_modes: 9
+```
+
+## Legacy Scripts (Still Functional)
 
 ### 1. Convert SDF to CSV
 
@@ -78,36 +152,14 @@ Convert multiple SDF files from directory:
 python scripts/sdf_to_csv_converter.py /path/to/sdf_directory/
 ```
 
-**Features:**
-- Extracts canonicalized SMILES strings
-- Preserves all SDF properties
-- Handles multiple files with source tracking
-- Generates both individual and merged CSV files
+### 2. Single Dataset Analysis (Legacy)
 
-### 2. Single Dataset Analysis
-
-Analyze molecular properties from CSV file:
 ```bash
 python scripts/molecular_property_visualizer.py data.csv --output dashboard.html
 ```
 
-With custom properties:
-```bash
-python scripts/molecular_property_visualizer.py data.csv \
-    --property_from_input "Docking_Score" "Binding_Affinity" \
-    --output custom_dashboard.html
-```
+### 3. Multi-Dataset Comparison (Legacy)
 
-**Generated Plots:**
-- Molecular Weight vs LogP
-- TPSA vs QED (Drug-likeness)
-- H-Bond Acceptors vs H-Bond Donors
-- t-SNE Molecular Space
-- Custom property correlations
-
-### 3. Multi-Dataset Comparison
-
-Compare multiple datasets with chemical space analysis:
 ```bash
 python scripts/chemical_space_analyzer.py \
     --csv_files dataset1.csv dataset2.csv dataset3.csv \
@@ -115,28 +167,32 @@ python scripts/chemical_space_analyzer.py \
     --output comparison_dashboard.html
 ```
 
-**Features:**
-- PCA analysis with explained variance
-- t-SNE chemical space visualization
-- Source-based color coding
-- Interactive compound highlighting
-- Cross-plot synchronization
+## 📊 Enhanced Dashboard Features
 
-## 📊 Dashboard Features
+### Main Analysis Tab
+- **Property Visualization**: Configurable scatter plot with dropdown selectors for X-axis, Y-axis, and color coding
+- **PCA Plot**: Principal component analysis of molecular fingerprints with explained variance
+- **t-SNE Plot**: t-distributed stochastic neighbor embedding for chemical space visualization
+- **Structure Panel**: Molecular structure display with comprehensive property details
 
-### Interactive Elements
-- **Hover Effects**: View molecular structures and properties on hover
-- **Synchronized Highlighting**: Compound highlighting across all plots
-- **Color Coding**: Third dimension visualization using color scales
-- **Property Panel**: Detailed molecular information display
-- **Responsive Design**: Works across different screen sizes
+### Docking Tab (if enabled)
+- **3D Pose Viewer**: Interactive visualization of docking poses
+- **Binding Energy Plot**: Distribution of binding energies
+- **Compound Rankings**: List of compounds sorted by binding affinity
+
+### Interactive Features
+- **Synchronized Highlighting**: Hover over any point to highlight the same compound across all plots
+- **Structure Display**: Click or hover to view molecular structures and properties
+- **Configurable Plots**: Change X/Y axes and color coding on the fly
+- **Professional Styling**: Clean white backgrounds, color bars, and scientific styling
 
 ### Molecular Properties Calculated
 - **Basic**: Molecular Weight, LogP, TPSA
 - **Drug-likeness**: QED, Synthetic Accessibility Score
 - **Topology**: H-bond acceptors/donors, Rotatable bonds
-- **Structural**: Aromatic rings, Heavy atoms
+- **Structural**: Aromatic rings, Heavy atoms, Fraction Csp3
 - **Custom**: User-provided properties from CSV
+- **Docking**: Binding energies and pose files (if enabled)
 
 ## 💡 Example Workflows
 
