@@ -129,8 +129,10 @@ class MolecularDataProcessor:
                     # Basic properties
                     'MW': Descriptors.MolWt(mol),
                     'LogP': Crippen.MolLogP(mol),
+                    'TPSA': rdMolDescriptors.CalcTPSA(mol),
                     'HBA': rdMolDescriptors.CalcNumHBA(mol),
                     'HBD': rdMolDescriptors.CalcNumHBD(mol),
+                    'RotBonds': rdMolDescriptors.CalcNumRotatableBonds(mol),
                     'NumRings': rdMolDescriptors.CalcNumRings(mol),
                     
                     # Drug-likeness
@@ -141,7 +143,7 @@ class MolecularDataProcessor:
             except Exception as e:
                 self.logger.warning(f"Error calculating descriptors for molecule {i}: {e}")
                 desc = {key: np.nan for key in [
-                    'MW', 'LogP', 'HBA', 'HBD', 'NumRings', 'QED', 'SAscore'
+                    'MW', 'LogP', 'TPSA', 'HBA', 'HBD', 'RotBonds', 'NumRings', 'QED', 'SAscore'
                 ]}
             
             descriptors.append(desc)
@@ -156,7 +158,7 @@ class MolecularDataProcessor:
         
         # Log descriptor summary
         self.logger.info("Descriptor summary:")
-        summary_cols = ['MW', 'LogP', 'TPSA', 'QED', 'SAscore']
+        summary_cols = ['MW', 'LogP', 'TPSA', 'QED', 'SAscore', 'HBA', 'HBD', 'RotBonds', 'NumRings']
         available_cols = [col for col in summary_cols if col in self.df.columns]
         if available_cols:
             self.logger.info(f"\n{self.df[available_cols].describe()}")
@@ -274,7 +276,7 @@ class MolecularDataProcessor:
             self.pca_model.explained_variance_ratio_ if self.pca_model else np.array([])
         )
     
-    def mol_to_base64_png(self, mol, size=(300, 300)) -> str:
+    def mol_to_base64_png(self, mol, size=(200, 140)) -> str:
         """
         Convert molecule to base64 encoded PNG image
         
@@ -330,8 +332,7 @@ class MolecularDataProcessor:
             # Add molecular descriptors
             descriptor_cols = [
                 'MW', 'LogP', 'TPSA', 'HBA', 'HBD', 'QED', 'SAscore', 
-                'RotBonds', 'AromaticRings', 'HeavyAtoms', 'MolMR',
-                'NumRings', 'NumHeteroatoms', 'FractionCsp3', 'BertzCT'
+                'RotBonds', 'NumRings'
             ]
             
             for col in descriptor_cols:
@@ -379,8 +380,7 @@ class MolecularDataProcessor:
         # Standard molecular descriptors
         standard_props = [
             'MW', 'LogP', 'TPSA', 'HBA', 'HBD', 'QED', 'SAscore',
-            'RotBonds', 'AromaticRings', 'HeavyAtoms', 'MolMR',
-            'NumRings', 'NumHeteroatoms', 'FractionCsp3', 'BertzCT'
+            'RotBonds', 'NumRings'
         ]
         
         # Custom properties from input

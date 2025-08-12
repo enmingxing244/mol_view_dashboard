@@ -219,11 +219,12 @@ class DashboardGenerator:
         
         .dashboard {
             display: grid;
-            grid-template-columns: 1fr 1fr 350px;
-            grid-template-rows: auto auto;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
             gap: 1.5rem;
-            max-width: 1600px;
+            max-width: 1400px;
             margin: 0 auto;
+            height: 800px;
         }
         
         .plot-container {
@@ -305,86 +306,96 @@ class DashboardGenerator:
             background: #ffffff;
             border: 1px solid #dee2e6;
             border-radius: 4px;
-            padding: 1.5rem;
+            padding: 1rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            position: sticky;
-            top: 2rem;
-            max-height: calc(100vh - 4rem);
-            overflow-y: auto;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         
         .structure-panel h3 {
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.5rem;
             color: #2c3e50;
             font-weight: 500;
+            font-size: 1rem;
             border-bottom: 1px solid #dee2e6;
-            padding-bottom: 0.5rem;
+            padding-bottom: 0.3rem;
+            flex-shrink: 0;
         }
         
         .structure-image {
             text-align: center;
-            margin: 1.5rem 0;
+            margin: 0.5rem 0;
             background: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 4px;
-            padding: 1rem;
-            min-height: 250px;
+            padding: 0.5rem;
+            height: 140px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         
         .structure-image img {
             max-width: 100%;
+            max-height: 120px;
             border-radius: 4px;
         }
         
         .structure-image .placeholder {
             color: #6c757d;
             font-style: italic;
+            font-size: 0.85rem;
         }
         
         .properties-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin: 1.5rem 0;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.4rem;
+            margin: 0.5rem 0;
+            flex: 1;
+            overflow-y: auto;
         }
         
         .property-box {
             background: #f8f9fa;
-            padding: 0.75rem;
+            padding: 0.4rem;
             border: 1px solid #dee2e6;
-            border-radius: 4px;
-            border-left: 3px solid #3498db;
+            border-radius: 3px;
+            border-left: 2px solid #3498db;
         }
         
         .property-label {
             font-weight: 500;
             color: #2c3e50;
-            font-size: 0.85rem;
-            margin-bottom: 0.25rem;
+            font-size: 0.7rem;
+            margin-bottom: 0.1rem;
+            line-height: 1.2;
         }
         
         .property-value {
             color: #495057;
-            font-size: 0.9rem;
+            font-size: 0.75rem;
             font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            line-height: 1.2;
         }
         
         .smiles-box {
             background: #f8f9fa;
-            padding: 1rem;
+            padding: 0.5rem;
             border: 1px solid #dee2e6;
             border-radius: 4px;
-            margin: 1.5rem 0;
+            margin: 0.5rem 0 0 0;
             border-left: 3px solid #3498db;
+            flex-shrink: 0;
         }
         
         .smiles-box .property-value {
             word-break: break-all;
-            font-size: 0.8rem;
-            line-height: 1.4;
+            font-size: 0.65rem;
+            line-height: 1.3;
         }
         
         .close-btn {
@@ -480,32 +491,23 @@ class DashboardGenerator:
             font-weight: 500;
         }
         
-        @media (max-width: 1400px) {
+        @media (max-width: 1200px) {
             .dashboard {
-                grid-template-columns: 1fr 300px;
-                max-width: 1200px;
-            }
-            
-            .plot-container[style*="grid-column: 1 / 3"] {
-                grid-column: 1 / 2;
+                max-width: 1000px;
+                height: 700px;
             }
         }
         
-        @media (max-width: 1000px) {
+        @media (max-width: 900px) {
             .dashboard {
                 grid-template-columns: 1fr;
-                grid-template-rows: auto;
+                grid-template-rows: auto auto auto auto;
+                height: auto;
                 gap: 1rem;
             }
             
             .structure-panel {
-                position: relative;
-                max-height: none;
-                grid-row: auto !important;
-            }
-            
-            .plot-container[style*="grid-column: 1 / 3"] {
-                grid-column: 1 / 1;
+                order: 2;
             }
         }
         
@@ -595,18 +597,14 @@ class DashboardGenerator:
         </div>
         
         <div class="dashboard">
-            <!-- First row: Property plot and PCA plot -->
+            <!-- Row 1, Col 1: Property plot -->
             <div class="plot-container">
                 <div class="plot-title" id="property-plot-title">Property Visualization</div>
                 <div id="property-plot"></div>
             </div>
-            <div class="plot-container">
-                <div class="plot-title">PCA Chemical Space</div>
-                <div id="pca-plot"></div>
-            </div>
             
-            <!-- Structure panel spans both rows -->
-            <div class="structure-panel" id="structurePanel" style="grid-row: 1 / 3;">
+            <!-- Row 1, Col 2: Structure panel -->
+            <div class="structure-panel" id="structurePanel">
                 <h3 id="compoundName">Molecular Details</h3>
                 <div class="structure-image" id="structureImage">
                     <div class="placeholder">Hover over a data point to view molecular structure</div>
@@ -620,8 +618,14 @@ class DashboardGenerator:
                 </div>
             </div>
             
-            <!-- Second row: t-SNE plot spans two columns -->
-            <div class="plot-container" style="grid-column: 1 / 3;">
+            <!-- Row 2, Col 1: PCA plot -->
+            <div class="plot-container">
+                <div class="plot-title">PCA Chemical Space</div>
+                <div id="pca-plot"></div>
+            </div>
+            
+            <!-- Row 2, Col 2: t-SNE plot -->
+            <div class="plot-container">
                 <div class="plot-title">t-SNE Chemical Space</div>
                 <div id="tsne-plot"></div>
             </div>
@@ -814,23 +818,10 @@ class DashboardGenerator:
                 return;
             }
             
-            // Adaptive dimensions based on plot type
-            let plotWidth, plotHeight, margin;
-            
-            if (config.id === 'tsne-plot') {
-                // t-SNE plot is wider (spans 2 columns)
-                margin = {top: 20, right: 150, bottom: 80, left: 100};
-                plotWidth = 800 - margin.left - margin.right;
-                plotHeight = 400 - margin.top - margin.bottom;
-            } else {
-                // Property and PCA plots are more square
-                margin = {top: 20, right: 120, bottom: 80, left: 80};
-                plotWidth = 480 - margin.left - margin.right;
-                plotHeight = 400 - margin.top - margin.bottom;
-            }
-            
-            const width = plotWidth;
-            const height = plotHeight;
+            // Uniform dimensions for all plots in 2x2 grid
+            const margin = {top: 20, right: 120, bottom: 80, left: 80};
+            const width = 500 - margin.left - margin.right;
+            const height = 350 - margin.top - margin.bottom;
             
             // Create SVG
             const svg = d3.select(`#${config.id}`)
@@ -1064,14 +1055,15 @@ class DashboardGenerator:
             // Update properties grid
             const propertiesGrid = document.getElementById('propertiesGrid');
             const propertyBoxes = [
-                {label: 'Molecular Weight', value: compound.mw ? `${compound.mw.toFixed(1)} Da` : '--'},
+                {label: 'MW', value: compound.mw ? `${compound.mw.toFixed(1)}` : '--'},
                 {label: 'LogP', value: compound.logp ? compound.logp.toFixed(2) : '--'},
-                {label: 'TPSA', value: compound.tpsa ? `${compound.tpsa.toFixed(1)} Ų` : '--'},
+                {label: 'TPSA', value: compound.tpsa ? `${compound.tpsa.toFixed(0)}` : '--'},
+                {label: 'HBA', value: compound.hba !== undefined ? compound.hba : '--'},
+                {label: 'HBD', value: compound.hbd !== undefined ? compound.hbd : '--'},
+                {label: 'RotBonds', value: compound.rotbonds !== undefined ? compound.rotbonds : '--'},
+                {label: 'Rings', value: compound.numrings !== undefined ? compound.numrings : '--'},
                 {label: 'QED', value: compound.qed ? compound.qed.toFixed(3) : '--'},
-                {label: 'SA Score', value: compound.sascore ? compound.sascore.toFixed(2) : '--'},
-                {label: 'H-Bond Acceptors', value: compound.hba || '--'},
-                {label: 'H-Bond Donors', value: compound.hbd || '--'},
-                {label: 'Rotatable Bonds', value: compound.rotbonds || '--'}
+                {label: 'SA Score', value: compound.sascore ? compound.sascore.toFixed(2) : '--'}
             ];
             
             // Add docking results if available
