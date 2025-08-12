@@ -16,20 +16,20 @@ Detected 8 CPUs
 Reading input ... done.
 Setting up the scoring function ... done.
 Analyzing the binding site ... done.
-Using random seed: 1276001644
+Using random seed: 758377636
 Performing search ... done.
 Refining results ... done.
 
 mode |   affinity | dist from best mode
      | (kcal/mol) | rmsd l.b.| rmsd u.b.
 -----+------------+----------+----------
-   1         -4.3      0.000      0.000
-   2         -4.2      2.302      3.539
-   3         -4.2      6.695      7.997
-   4         -4.1     13.628     15.024
-   5         -4.1     12.601     14.592
-   6         -4.1      2.161      4.040
-   7         -4.0      2.611      3.583
-   8         -4.0      1.903      2.985
-   9         -4.0     13.869     15.154
+   1         -4.2      0.000      0.000
+   2         -4.2      1.480      2.396
+   3         -4.1     13.943     15.234
+   4         -4.1     13.827     15.237
+   5         -4.1     13.246     14.619
+   6         -3.9     13.795     15.049
+   7         -3.9     13.781     15.083
+   8         -3.8     12.331     13.534
+   9         -3.7      1.880      3.200
 Writing output ... done.

@@ -180,6 +180,14 @@ class VinaDockingWrapper:
             
             if result.returncode == 0 and receptor_pdbqt.exists():
                 self.logger.info(f"Receptor prepared successfully: {receptor_pdbqt}")
+                
+                # Copy receptor to results directory for visualization
+                output_dir = Path(self.config.get('docking.output_dir', 'docking_results'))
+                output_dir.mkdir(exist_ok=True)
+                receptor_copy = output_dir / "receptor.pdbqt"
+                shutil.copy2(receptor_pdbqt, receptor_copy)
+                self.logger.info(f"Receptor copied to: {receptor_copy}")
+                
                 return str(receptor_pdbqt)
             else:
                 raise DockingError(f"Receptor preparation failed: {result.stderr}")
@@ -532,13 +540,19 @@ class VinaDockingWrapper:
         
         for idx, row in df.iterrows():
             if row.get('docking_success', False):
-                # Find corresponding output files
-                result_file = output_dir / f"result_{idx:04d}.pdbqt"
+                # Find corresponding output files (with compound name)
+                compound_name = row.get('title', f"Compound_{idx}")
+                # Sanitize compound name for filename
+                safe_name = "".join(c for c in compound_name if c.isalnum() or c in ('-', '_'))[:20]
+                if not safe_name:
+                    safe_name = f"ligand_{idx:04d}"
+                
+                result_file = output_dir / f"result_{idx:04d}_{safe_name}.pdbqt"
                 
                 if result_file.exists():
                     viz_data.append({
                         'compound_id': idx,
-                        'compound_name': row.get('title', f"Compound_{idx}"),
+                        'compound_name': compound_name,
                         'binding_energy': row.get('binding_energy', np.nan),
                         'pose_file': str(result_file),
                         'smiles': row.get(self.config.get('input.smiles_column', 'SMILES'), '')

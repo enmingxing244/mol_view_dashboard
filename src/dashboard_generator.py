@@ -13,6 +13,7 @@ import json
 import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+from structure_viewer import StructureViewer
 
 
 class DashboardGenerator:
@@ -27,6 +28,7 @@ class DashboardGenerator:
         """
         self.config = config_manager
         self.logger = logging.getLogger(__name__)
+        self.structure_viewer = StructureViewer(config_manager)
     
     def generate_dashboard(self, 
                          data_points: List[Dict[str, Any]], 
@@ -50,6 +52,15 @@ class DashboardGenerator:
         summary_json = json.dumps(data_summary, indent=2)
         docking_json = json.dumps(docking_data or [], indent=2)
         
+        # Check if docking is enabled
+        docking_enabled = self.config.is_docking_enabled() and docking_data
+        
+        # Prepare 3D structure data if docking is available
+        structure_viewer_html = ""
+        if docking_enabled:
+            structure_data = self.structure_viewer.prepare_docking_results_for_viewing(docking_data)
+            structure_viewer_html = self.structure_viewer.generate_3dmol_html(structure_data)
+        
         # Get available properties for plot configuration
         available_props = data_summary.get('available_properties', [])
         properties_json = json.dumps(available_props)
@@ -59,9 +70,6 @@ class DashboardGenerator:
         title = viz_config.get('title', 'Molecular Visualization and Analysis')
         color_scheme = viz_config.get('style.color_scheme', 'viridis')
         
-        # Check if docking is enabled
-        docking_enabled = self.config.is_docking_enabled() and docking_data
-        
         # Generate HTML content
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -70,14 +78,15 @@ class DashboardGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    {"<script src='https://unpkg.com/ngl@2.0.0-dev.36/dist/ngl.js'></script>" if docking_enabled else ""}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {"<script src='https://unpkg.com/3dmol@latest/build/3Dmol-min.js'></script>" if docking_enabled else ""}
     {self._generate_css()}
 </head>
 <body>
     {self._generate_header(title, data_summary)}
     {self._generate_tabs(docking_enabled)}
     {self._generate_main_tab(data_summary)}
-    {self._generate_docking_tab() if docking_enabled else ""}
+    {self._generate_docking_tab(structure_viewer_html) if docking_enabled else ""}
     {self._generate_structure_panel()}
     <div class="tooltip" id="tooltip"></div>
     
@@ -632,24 +641,14 @@ class DashboardGenerator:
         </div>
     </div>"""
     
-    def _generate_docking_tab(self) -> str:
+    def _generate_docking_tab(self, structure_viewer_html: str = "") -> str:
         """Generate docking analysis tab"""
-        return """
+        return f"""
     <div id="docking" class="tab-content">
         <div class="dashboard">
-            <div class="plot-container">
-                <div class="plot-title">Docking Results</div>
-                <div class="docking-controls">
-                    <label for="compound-select">Select Compound:</label>
-                    <select id="compound-select" onchange="loadDockingPose()">
-                        <option value="">Choose a compound...</option>
-                    </select>
-                </div>
-                <div class="docking-viewer" id="docking-viewer">
-                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #6c757d; font-style: italic;">
-                        Select a compound to view docking pose
-                    </div>
-                </div>
+            <div class="plot-container" style="grid-column: span 2;">
+                <div class="plot-title">3D Protein-Ligand Visualization</div>
+                {structure_viewer_html if structure_viewer_html else '<div style="padding: 2rem; text-align: center; color: #6c757d;">3D visualization not available</div>'}
             </div>
             <div class="plot-container">
                 <div class="plot-title">Binding Energy Distribution</div>
@@ -1090,17 +1089,6 @@ class DashboardGenerator:
             
             console.log('Populating docking data...');
             
-            // Populate compound selector
-            const compoundSelect = document.getElementById('compound-select');
-            compoundSelect.innerHTML = '<option value="">Choose a compound...</option>';
-            
-            dockingData.forEach(compound => {
-                const option = document.createElement('option');
-                option.value = compound.compound_id;
-                option.textContent = `${compound.compound_name} (${compound.binding_energy.toFixed(2)} kcal/mol)`;
-                compoundSelect.appendChild(option);
-            });
-            
             // Populate compound list
             const compoundList = document.getElementById('compound-list');
             compoundList.innerHTML = dockingData
@@ -1118,6 +1106,9 @@ class DashboardGenerator:
                         </div>
                     `;
                 }).join('');
+                
+            // Create binding energy distribution plot
+            createBindingEnergyPlot();
         }
         
         function selectDockingCompound(compoundId) {
@@ -1134,38 +1125,78 @@ class DashboardGenerator:
             loadDockingPose();
         }
         
-        function loadDockingPose() {
-            const compoundId = document.getElementById('compound-select').value;
-            if (!compoundId) return;
+        function createBindingEnergyPlot() {
+            if (!dockingEnabled || !dockingData.length) return;
             
-            console.log('Loading docking pose for compound:', compoundId);
+            console.log('Creating binding energy distribution plot...');
             
-            // Find compound data
-            const compound = dockingData.find(d => d.compound_id == compoundId);
-            if (!compound) return;
+            // Clear existing plot
+            d3.select("#binding-energy-plot").selectAll("*").remove();
             
-            // Initialize NGL viewer (if available)
-            if (typeof NGL !== 'undefined') {
-                const viewer = document.getElementById('docking-viewer');
-                viewer.innerHTML = '';
+            const margin = {top: 20, right: 20, bottom: 40, left: 60};
+            const width = 400 - margin.left - margin.right;
+            const height = 300 - margin.top - margin.bottom;
+            
+            const svg = d3.select("#binding-energy-plot")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom);
                 
-                // Note: In a real implementation, you would load the actual pose file
-                // For now, we'll show a placeholder
-                viewer.innerHTML = `
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #495057;">
-                        <h4>${compound.compound_name}</h4>
-                        <p>Binding Energy: ${compound.binding_energy.toFixed(2)} kcal/mol</p>
-                        <p style="font-style: italic; color: #6c757d;">3D pose visualization would be loaded here</p>
-                    </div>
-                `;
-            }
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Prepare data
+            const energies = dockingData.map(d => d.binding_energy).sort((a, b) => a - b);
+            const bins = d3.bin().thresholds(10)(energies);
+            
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(energies))
+                .range([0, width]);
+                
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(bins, d => d.length)])
+                .range([height, 0]);
+            
+            // Add bars
+            g.selectAll(".bar")
+                .data(bins)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => xScale(d.x0))
+                .attr("width", d => Math.max(0, xScale(d.x1) - xScale(d.x0) - 1))
+                .attr("y", d => yScale(d.length))
+                .attr("height", d => height - yScale(d.length))
+                .attr("fill", "#3498db")
+                .attr("opacity", 0.7);
+            
+            // Add axes
+            g.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(xScale));
+                
+            g.append("g")
+                .call(d3.axisLeft(yScale));
+            
+            // Add labels
+            g.append("text")
+                .attr("transform", `translate(${width/2}, ${height + 35})`)
+                .style("text-anchor", "middle")
+                .style("font-size", "12px")
+                .text("Binding Energy (kcal/mol)");
+                
+            g.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -40)
+                .attr("x", -height / 2)
+                .style("text-anchor", "middle")
+                .style("font-size", "12px")
+                .text("Frequency");
         }
         
         // Make functions globally available
         window.showTab = showTab;
         window.updatePropertyPlot = updatePropertyPlot;
         window.selectDockingCompound = selectDockingCompound;
-        window.loadDockingPose = loadDockingPose;
         """
     
     def save_dashboard(self, html_content: str, output_file: str) -> None:
