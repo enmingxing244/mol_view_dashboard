@@ -51,7 +51,22 @@ class VinaDockingWrapper:
         # MGLTools paths from configuration
         self.mgltools_path = self.config.get('docking.mgltools_path', 
                                            "/Users/enmingxing/Projects/mol_view_dashboard/packages/mgltools_1.5.7_MacOS-X/installed")
-        self.mgl_python = f"{self.mgltools_path}/bin/python"
+        
+        # Check for MGLTools Python executable (try both 'python' and 'pythonsh')
+        python_candidates = [
+            f"{self.mgltools_path}/bin/python",
+            f"{self.mgltools_path}/bin/pythonsh"
+        ]
+        
+        self.mgl_python = None
+        for python_path in python_candidates:
+            if Path(python_path).exists():
+                self.mgl_python = python_path
+                break
+        
+        if self.mgl_python is None:
+            self.mgl_python = f"{self.mgltools_path}/bin/python"  # Default fallback
+        
         self.utilities_path = f"{self.mgltools_path}/MGLToolsPckgs/AutoDockTools/Utilities24"
         
         # Check if docking is enabled
@@ -79,7 +94,13 @@ class VinaDockingWrapper:
         self.logger.info(f"Using MGLTools installation at: {self.mgltools_path}")
         
         if not Path(self.mgl_python).exists():
-            raise DockingError(f"MGLTools Python not found: {self.mgl_python}")
+            # Try to provide helpful error message
+            python_path = f"{self.mgltools_path}/bin/python"
+            pythonsh_path = f"{self.mgltools_path}/bin/pythonsh"
+            error_msg = f"MGLTools Python executable not found. Tried:\n  - {python_path}\n  - {pythonsh_path}"
+            raise DockingError(error_msg)
+        else:
+            self.logger.info(f"Using MGLTools Python: {self.mgl_python}")
         
         if not Path(self.utilities_path).exists():
             raise DockingError(f"MGLTools utilities not found: {self.utilities_path}")
