@@ -140,11 +140,11 @@ CC1=NC(NC2=NC=C(C(NC3=C(C=CC=C3Cl)C)=O)S2)=CC(N4CCN(CC4)CCO)=N1,Dasatinib
 ```
 **Purpose**: Example kinase inhibitors for testing the complete workflow
 
-### 📁 `4csv.pdb`
-**Purpose**: Crystal structure of a kinase protein for docking studies
+`4csv.pdb`
+Crystal structure of a kinase protein for docking studies
 
-### 📁 `config.yaml`
-**Purpose**: Complete configuration example with docking enabled
+ `config.yaml`
+Complete configuration example with docking enabled
 
 ## What the Dashboard Shows
 
@@ -176,12 +176,6 @@ CC1=NC(NC2=NC=C(C(NC3=C(C=CC=C3Cl)C)=O)S2)=CC(N4CCN(CC4)CCO)=N1,Dasatinib
 - **Core**: pandas, numpy, scikit-learn, pyyaml
 - **Chemistry**: RDKit (conda recommended)
 - **Optional**: AutoDock Vina, MGLTools (for docking)
-
-## Troubleshooting
-
-**"t-SNE skipped"**: Normal for <10 compounds  
-**"RDKit not found"**: Install via `conda install -c conda-forge rdkit`  
-**Docking fails**: Check vina_executable and mgltools_path in config  
 
 ## License
 
