@@ -49,8 +49,9 @@ class VinaDockingWrapper:
         self.temp_dir = None
         
         # MGLTools paths from configuration
-        self.mgltools_path = self.config.get('docking.mgltools_path', 
-                                           "/Users/enmingxing/Projects/mol_view_dashboard/packages/mgltools_1.5.7_MacOS-X/installed")
+        self.mgltools_path = self.config.get('docking.mgltools_path')
+        if not self.mgltools_path:
+            raise DockingError("MGLTools path not specified in configuration. Please set 'docking.mgltools_path' in your config file.")
         
         # Check for MGLTools Python executable (try both 'python' and 'pythonsh')
         python_candidates = [

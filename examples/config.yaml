@@ -2,7 +2,7 @@
 input:
   csv_file: "examples/sample_compounds.csv"
   smiles_column: "SMILES"
-  name_column: "Name"
+  name_column: "Name" # if the csv file does not have Name, leave here as null
   property_columns:
     # - "Activity_uM"
     # - "Binding_Score"
@@ -23,13 +23,15 @@ docking:
   enabled: true
   
   # Input protein PDB file (will be cleaned and prepared by MGLTools)
-  protein_pdb: "/Users/enmingxing/Projects/mol_view_dashboard/examples/4csv.pdb"
+  protein_pdb: "examples/4csv.pdb"
   
   # AutoDock Vina executable path (if not in system PATH)
-  vina_executable: "/Users/enmingxing/Projects/mol_view_dashboard/packages/autodock_vina_1_1_2_mac_catalina_64bit/bin/vina"
+  # Replace with your actual Vina installation path
+  vina_executable: "vina"  # or "/path/to/your/vina/executable"
   
   # MGLTools installation path (path to the 'installed' directory)
-  mgltools_path: "/Users/enmingxing/Projects/mol_view_dashboard/packages/mgltools_1.5.7_MacOS-X/installed"
+  # Replace with your actual MGLTools installation path
+  mgltools_path: "/path/to/your/mgltools/installation"
   
   # Binding site configuration (you specify these coordinates)
   binding_site:
