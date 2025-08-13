@@ -383,11 +383,11 @@ class VinaDockingWrapper:
                 
                 if result.returncode == 0:
                     # Parse docking results
-                    binding_energy = self._parse_vina_output(str(log_file))
+                    docking_score = self._parse_vina_output(str(log_file))
                     
                     docking_result = {
                         'ligand_index': ligand_idx,
-                        'binding_energy': binding_energy,
+                        'docking_score': docking_score,
                         'output_file': str(output_file),
                         'log_file': str(log_file),
                         'success': True
@@ -397,7 +397,7 @@ class VinaDockingWrapper:
                     self.logger.warning(f"Vina failed for ligand {ligand_idx}: {result.stderr}")
                     docking_result = {
                         'ligand_index': ligand_idx,
-                        'binding_energy': np.nan,
+                        'docking_score': np.nan,
                         'success': False,
                         'error': result.stderr
                     }
@@ -408,7 +408,7 @@ class VinaDockingWrapper:
                 self.logger.warning(f"Vina timeout for ligand {i}")
                 docking_results.append({
                     'ligand_index': i,
-                    'binding_energy': np.nan,
+                    'docking_score': np.nan,
                     'success': False,
                     'error': 'Timeout'
                 })
@@ -417,7 +417,7 @@ class VinaDockingWrapper:
                 self.logger.warning(f"Error docking ligand {i}: {e}")
                 docking_results.append({
                     'ligand_index': i,
-                    'binding_energy': np.nan,
+                    'docking_score': np.nan,
                     'success': False,
                     'error': str(e)
                 })
@@ -430,13 +430,13 @@ class VinaDockingWrapper:
     
     def _parse_vina_output(self, log_file: str) -> float:
         """
-        Parse Vina log file to extract binding energy
+        Parse Vina log file to extract docking score
         
         Args:
             log_file: Path to Vina log file
             
         Returns:
-            Best binding energy (kcal/mol)
+            Best docking score (kcal/mol)
         """
         try:
             with open(log_file, 'r') as f:
@@ -469,7 +469,7 @@ class VinaDockingWrapper:
                             except ValueError:
                                 pass
             
-            self.logger.warning(f"Could not parse binding energy from {log_file}")
+            self.logger.warning(f"Could not parse docking score from {log_file}")
             return np.nan
             
         except Exception as e:
@@ -488,7 +488,7 @@ class VinaDockingWrapper:
         """
         if not self.config.is_docking_enabled() or not self.docking_results:
             # Add empty docking columns
-            df['binding_energy'] = np.nan
+            df['docking_score'] = np.nan
             df['docking_success'] = False
             return df
         
@@ -498,30 +498,30 @@ class VinaDockingWrapper:
         docking_map = {r['ligand_index']: r for r in self.docking_results}
         
         # Add docking columns
-        binding_energies = []
+        docking_scores = []
         docking_success = []
         
         for idx in range(len(df)):
             if idx in docking_map:
                 result = docking_map[idx]
-                binding_energies.append(result.get('binding_energy', np.nan))
+                docking_scores.append(result.get('docking_score', np.nan))
                 docking_success.append(result.get('success', False))
             else:
-                binding_energies.append(np.nan)
+                docking_scores.append(np.nan)
                 docking_success.append(False)
         
-        df['binding_energy'] = binding_energies
+        df['docking_score'] = docking_scores
         df['docking_success'] = docking_success
         
         # Log summary
         successful_count = sum(docking_success)
         if successful_count > 0:
-            valid_energies = [e for e in binding_energies if not np.isnan(e)]
-            if valid_energies:
+            valid_scores = [s for s in docking_scores if not np.isnan(s)]
+            if valid_scores:
                 self.logger.info(f"Docking integration complete:")
                 self.logger.info(f"  Successful dockings: {successful_count}/{len(df)}")
-                self.logger.info(f"  Binding energy range: {min(valid_energies):.2f} to {max(valid_energies):.2f} kcal/mol")
-                self.logger.info(f"  Mean binding energy: {np.mean(valid_energies):.2f} kcal/mol")
+                self.logger.info(f"  Docking score range: {min(valid_scores):.2f} to {max(valid_scores):.2f} kcal/mol")
+                self.logger.info(f"  Mean docking score: {np.mean(valid_scores):.2f} kcal/mol")
         
         return df
     
@@ -556,7 +556,7 @@ class VinaDockingWrapper:
                     viz_data.append({
                         'compound_id': idx,
                         'compound_name': compound_name,
-                        'binding_energy': row.get('binding_energy', np.nan),
+                        'docking_score': row.get('docking_score', np.nan),
                         'pose_file': str(result_file),
                         'smiles': row.get(self.config.get('input.smiles_column', 'SMILES'), '')
                     })
@@ -588,8 +588,8 @@ class VinaDockingWrapper:
             return {'enabled': False}
         
         successful_results = [r for r in self.docking_results if r.get('success', False)]
-        binding_energies = [r['binding_energy'] for r in successful_results 
-                          if not np.isnan(r.get('binding_energy', np.nan))]
+        docking_scores = [r['docking_score'] for r in successful_results 
+                         if not np.isnan(r.get('docking_score', np.nan))]
         
         summary = {
             'enabled': True,
@@ -598,12 +598,12 @@ class VinaDockingWrapper:
             'success_rate': len(successful_results) / len(self.docking_results) if self.docking_results else 0,
         }
         
-        if binding_energies:
+        if docking_scores:
             summary.update({
-                'best_binding_energy': min(binding_energies),
-                'worst_binding_energy': max(binding_energies),
-                'mean_binding_energy': np.mean(binding_energies),
-                'std_binding_energy': np.std(binding_energies)
+                'best_docking_score': min(docking_scores),
+                'worst_docking_score': max(docking_scores),
+                'mean_docking_score': np.mean(docking_scores),
+                'std_docking_score': np.std(docking_scores)
             })
         
         return summary

@@ -1,6 +1,11 @@
-pandas>=1.3.0
-numpy>=1.21.0
-scikit-learn>=1.0.0
-rdkit-pypi>=2022.3.5
+# Core dependencies (Python 3.11)
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
 pyyaml>=6.0
-pathlib2>=2.3.0
+
+# Note: RDKit should be installed via conda:
+# conda install -c conda-forge rdkit
+
+# For pip-only environments (less reliable):
+# rdkit>=2023.3.1

@@ -13,7 +13,7 @@ import json
 import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
-from structure_viewer import StructureViewer
+from .structure_viewer import StructureViewer
 
 
 class DashboardGenerator:
@@ -651,7 +651,7 @@ class DashboardGenerator:
                 {structure_viewer_html if structure_viewer_html else '<div style="padding: 2rem; text-align: center; color: #6c757d;">3D visualization not available</div>'}
             </div>
             <div class="plot-container">
-                <div class="plot-title">Binding Energy Distribution</div>
+                <div class="plot-title">Docking Score Distribution</div>
                 <div id="binding-energy-plot"></div>
             </div>
             <div class="plot-container">
@@ -775,7 +775,12 @@ class DashboardGenerator:
         
         function createTSNEPlot() {
             if (!summary.has_tsne) {
-                document.getElementById('tsne-plot').innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">t-SNE analysis not available</p>';
+                const compoundCount = summary.total_compounds || 0;
+                let message = 't-SNE analysis not available';
+                if (compoundCount < 10) {
+                    message = `t-SNE requires at least 10 compounds for meaningful analysis.<br>Current dataset: ${compoundCount} compounds`;
+                }
+                document.getElementById('tsne-plot').innerHTML = `<p style="text-align: center; color: #6c757d; padding: 2rem;">${message}</p>`;
                 return;
             }
             
@@ -1066,10 +1071,10 @@ class DashboardGenerator:
             ];
             
             // Add docking results if available
-            if (dockingEnabled && compound.binding_energy !== undefined && !isNaN(compound.binding_energy)) {
+            if (dockingEnabled && compound.docking_score !== undefined && !isNaN(compound.docking_score)) {
                 propertyBoxes.push({
-                    label: 'Binding Energy', 
-                    value: `${compound.binding_energy.toFixed(2)} kcal/mol`
+                    label: 'Docking Score', 
+                    value: `${compound.docking_score.toFixed(2)} kcal/mol`
                 });
             }
             
@@ -1092,16 +1097,16 @@ class DashboardGenerator:
             // Populate compound list
             const compoundList = document.getElementById('compound-list');
             compoundList.innerHTML = dockingData
-                .sort((a, b) => a.binding_energy - b.binding_energy)
+                .sort((a, b) => a.docking_score - b.docking_score)
                 .map(compound => {
-                    const energyClass = compound.binding_energy < -8 ? 'energy-good' :
-                                      compound.binding_energy < -6 ? 'energy-moderate' : 'energy-poor';
+                    const energyClass = compound.docking_score < -8 ? 'energy-good' :
+                                      compound.docking_score < -6 ? 'energy-moderate' : 'energy-poor';
                     
                     return `
                         <div class="compound-item" onclick="selectDockingCompound(${compound.compound_id})">
                             <div class="compound-name">${compound.compound_name}</div>
                             <div class="binding-energy ${energyClass}">
-                                ${compound.binding_energy.toFixed(2)} kcal/mol
+                                ${compound.docking_score.toFixed(2)} kcal/mol
                             </div>
                         </div>
                     `;
@@ -1146,7 +1151,7 @@ class DashboardGenerator:
                 .attr("transform", `translate(${margin.left},${margin.top})`);
             
             // Prepare data
-            const energies = dockingData.map(d => d.binding_energy).sort((a, b) => a - b);
+            const energies = dockingData.map(d => d.docking_score).sort((a, b) => a - b);
             const bins = d3.bin().thresholds(10)(energies);
             
             const xScale = d3.scaleLinear()
@@ -1182,7 +1187,7 @@ class DashboardGenerator:
                 .attr("transform", `translate(${width/2}, ${height + 35})`)
                 .style("text-anchor", "middle")
                 .style("font-size", "12px")
-                .text("Binding Energy (kcal/mol)");
+                .text("Docking Score (kcal/mol)");
                 
             g.append("text")
                 .attr("transform", "rotate(-90)")

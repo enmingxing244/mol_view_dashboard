@@ -110,14 +110,14 @@ class StructureViewer:
         structure_data = {
             'receptor': receptor_pdb_content,
             'ligands': {},
-            'binding_energies': {}
+            'docking_scores': {}
         }
         
         for result in docking_data:
             compound_id = result.get('compound_id', 0)
             compound_name = result.get('compound_name', f"Compound_{compound_id}")
             pose_file = result.get('pose_file', '')
-            binding_energy = result.get('binding_energy', 0.0)
+            docking_score = result.get('docking_score', 0.0)
             
             if pose_file and Path(pose_file).exists():
                 # Convert ligand pose to PDB
@@ -125,9 +125,9 @@ class StructureViewer:
                 structure_data['ligands'][compound_id] = {
                     'name': compound_name,
                     'pdb_content': ligand_pdb,
-                    'binding_energy': binding_energy
+                    'docking_score': docking_score
                 }
-                structure_data['binding_energies'][compound_id] = binding_energy
+                structure_data['docking_scores'][compound_id] = docking_score
         
         self.logger.info(f"Prepared {len(structure_data['ligands'])} structures for viewing")
         return structure_data
@@ -221,7 +221,7 @@ class StructureViewer:
                     const ligand = structureData.ligands[ligandId];
                     const option = document.createElement('option');
                     option.value = ligandId;
-                    option.textContent = `${{ligand.name}} (${{ligand.binding_energy.toFixed(1)}} kcal/mol)`;
+                    option.textContent = `${{ligand.name}} (${{ligand.docking_score.toFixed(1)}} kcal/mol)`;
                     selector.appendChild(option);
                 }});
                 
@@ -263,7 +263,7 @@ class StructureViewer:
                 const energyDisplay = document.getElementById('binding-energy-display');
                 energyDisplay.innerHTML = `
                     <strong>${{ligand.name}}</strong><br>
-                    Binding Energy: <span style="color: #4CAF50;">${{ligand.binding_energy.toFixed(1)}} kcal/mol</span>
+                    Docking Score: <span style="color: #4CAF50;">${{ligand.docking_score.toFixed(1)}} kcal/mol</span>
                 `;
                 
                 currentLigand = ligandId;

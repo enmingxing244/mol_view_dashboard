@@ -15,14 +15,14 @@ import argparse
 from pathlib import Path
 import traceback
 
-# Add src directory to Python path
+# Add src directory to Python path for package imports
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
 try:
-    from config_manager import ConfigManager, ConfigurationError
-    from molecular_data_processor import MolecularDataProcessor
-    from docking_wrapper import VinaDockingWrapper, DockingError
-    from dashboard_generator import DashboardGenerator
+    from mol_view_dashboard.config_manager import ConfigManager, ConfigurationError
+    from mol_view_dashboard.molecular_data_processor import MolecularDataProcessor
+    from mol_view_dashboard.docking_wrapper import VinaDockingWrapper, DockingError
+    from mol_view_dashboard.dashboard_generator import DashboardGenerator
 except ImportError as e:
     print(f"Error importing modules: {e}")
     print("Make sure all required dependencies are installed:")

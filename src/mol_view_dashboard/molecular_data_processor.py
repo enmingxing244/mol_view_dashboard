@@ -251,7 +251,7 @@ class MolecularDataProcessor:
         
         # t-SNE analysis
         tsne_config = self.config.get('analysis.chemical_space.tsne', {})
-        if tsne_config.get('enabled', True):
+        if tsne_config.get('enabled', True) and len(self.df) >= 10:
             self.logger.info("  Running t-SNE...")
             n_components = tsne_config.get('n_components', 2)
             perplexity = min(tsne_config.get('perplexity', 30), len(self.df)//4)
@@ -267,12 +267,17 @@ class MolecularDataProcessor:
             # Add t-SNE coordinates to dataframe
             for i in range(n_components):
                 self.df[f'tSNE_{i+1}'] = self.tsne_coords[:, i]
+        else:
+            if len(self.df) < 10:
+                self.logger.info(f"  t-SNE skipped: requires at least 10 compounds (found {len(self.df)})")
+            else:
+                self.logger.info("  t-SNE disabled in configuration")
         
         self.logger.info("Chemical space analysis completed")
         
         return (
             self.pca_coords, 
-            self.tsne_coords, 
+            self.tsne_coords if self.tsne_coords is not None else np.array([]), 
             self.pca_model.explained_variance_ratio_ if self.pca_model else np.array([])
         )
     
@@ -349,7 +354,7 @@ class MolecularDataProcessor:
                 data_point['tsne_y'] = float(row['tSNE_2'])
             
             # Add custom property columns
-            property_cols = self.config.get('input.property_columns', [])
+            property_cols = self.config.get('input.property_columns', []) or []
             for prop_col in property_cols:
                 if prop_col in row and pd.notna(row[prop_col]):
                     # Normalize property name for JavaScript
@@ -384,7 +389,7 @@ class MolecularDataProcessor:
         ]
         
         # Custom properties from input
-        custom_props = self.config.get('input.property_columns', [])
+        custom_props = self.config.get('input.property_columns', []) or []
         
         # Filter to only include properties that exist in the dataframe
         available_props = []
