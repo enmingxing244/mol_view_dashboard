@@ -28,6 +28,9 @@ docking:
   # AutoDock Vina executable path (if not in system PATH)
   vina_executable: "/Users/enmingxing/Projects/mol_view_dashboard/packages/autodock_vina_1_1_2_mac_catalina_64bit/bin/vina"
   
+  # MGLTools installation path (path to the 'installed' directory)
+  mgltools_path: "/Users/enmingxing/Projects/mol_view_dashboard/packages/mgltools_1.5.7_MacOS-X/installed"
+  
   # Binding site configuration (you specify these coordinates)
   binding_site:
     # Center coordinates (x, y, z) of the binding pocket
@@ -52,7 +55,7 @@ docking:
       add_hydrogens: true
       remove_waters: true
       remove_nonstd_residues: true
-      remove_ligands: true          # ← Remove native ligands/cofactors
+      remove_ligands: true          # ← Remove native ligands/cgir ofactors
     
     # Ligand preparation options  
     ligand_prep:

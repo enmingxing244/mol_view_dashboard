@@ -175,7 +175,7 @@ class StructureViewer:
                     <button id="toggle-surface">Toggle Surface</button>
                 </div>
             </div>
-            <div id="structure-viewer" style="width: 100%; flex: 1; min-height: 400px; background: white; border: 1px solid #ddd; border-radius: 4px;"></div>
+            <div id="structure-viewer" style="width: 100%; flex: 1; min-height: 400px; background: white; border: 1px solid #ddd; border-radius: 4px; margin: 0 auto; display: flex; align-items: center; justify-content: center;"></div>
             <div id="structure-info">
                 <div id="binding-energy-display"></div>
             </div>
@@ -207,8 +207,11 @@ class StructureViewer:
                 // Load receptor if available
                 if (structureData.receptor) {{
                     viewer.addModel(structureData.receptor, 'pdb');
-                    viewer.setStyle({{}}, {{
-                        stick: {{ color: 'cyan', radius: 0.2 }}
+                    viewer.setStyle({{model: 0}}, {{
+                        cartoon: {{ 
+                            color: 'spectrum',
+                            opacity: 0.8
+                        }}
                     }});
                 }}
                 
@@ -325,6 +328,7 @@ class StructureViewer:
                 height: 100%;
                 display: flex;
                 flex-direction: column;
+                align-items: center;
             }}
             
             #structure-viewer-header {{
@@ -338,6 +342,19 @@ class StructureViewer:
                 display: flex;
                 gap: 10px;
                 align-items: center;
+            }}
+            
+            #structure-viewer {{
+                position: relative;
+                margin: 0 auto !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }}
+            
+            #structure-viewer canvas {{
+                margin: 0 auto !important;
+                display: block !important;
             }}
             
             #ligand-selector {{
